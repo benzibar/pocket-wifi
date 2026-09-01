@@ -535,7 +535,7 @@ class AboutScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Static(
             "POCKET WI-FI\n\n"
-            "v0.2.4\n\n"
+            "v0.2.5\n\n"
             "Wireless scanning, connection management "
             "and diagnostics for PocketTerm.\n\n"
             "Future versions can add passive wireless "
@@ -630,6 +630,36 @@ class PocketWifi(App):
             else "---"
         )
 
+        current_network = None
+        if info.ssid:
+            try:
+                current_network = next(
+                    (
+                        network
+                        for network in self.manager.scan_access_points(rescan=False)
+                        if network.in_use or network.ssid == info.ssid
+                    ),
+                    None,
+                )
+            except Exception:
+                current_network = None
+
+        channel = (
+            str(current_network.channel)
+            if current_network is not None and current_network.channel is not None
+            else "---"
+        )
+        band = (
+            current_network.band
+            if current_network is not None and current_network.band
+            else "---"
+        )
+        security = (
+            current_network.security
+            if current_network is not None and current_network.security
+            else "---"
+        )
+
         self.query_one(
             "#home-status",
             Static,
@@ -642,9 +672,9 @@ class PocketWifi(App):
                     ("Router:", info.gateway),
                     ("DNS:", info.dns_text),
                     ("Signal:", signal),
-                    ("Channel:", str(info.channel) if info.channel is not None else "---"),
-                    ("Band:", info.band or "---"),
-                    ("Security:", info.security or "---"),
+                    ("Channel:", channel),
+                    ("Band:", band),
+                    ("Security:", security),
                     ("Iface:", info.interface),
                 ]
             )
