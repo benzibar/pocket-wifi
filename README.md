@@ -2,7 +2,7 @@
 
 PocketTerm Wi-Fi scanning, connection management and diagnostics.
 
-## v0.2.1
+## v0.2.2
 
 - Home screen now shows current SSID, device IP address, router/default gateway, DNS, signal and interface
 - Compact nearby-network list for the PocketTerm display
@@ -19,3 +19,9 @@ PocketTerm Wi-Fi scanning, connection management and diagnostics.
 source .venv/bin/activate
 pocket-wifi
 ```
+
+
+## v0.2.2
+
+- Added dedicated Network status screen with IP, router/default gateway, DNS, signal, channel, band, security and interface.
+- Added green field labels throughout the main status display and Network screen.
