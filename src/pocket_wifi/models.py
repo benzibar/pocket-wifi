@@ -26,3 +26,17 @@ class WifiNetwork:
             return "6G"
 
         return "---"
+
+
+@dataclass(frozen=True)
+class ConnectionInfo:
+    interface: str
+    ssid: str
+    ip_address: str
+    gateway: str
+    dns_servers: tuple[str, ...]
+    signal: int | None = None
+
+    @property
+    def dns_text(self) -> str:
+        return ", ".join(self.dns_servers) if self.dns_servers else "---"

@@ -99,10 +99,56 @@ class PasswordScreen(ModalScreen[str | None]):
         self.dismiss(None)
 
 
+class SignalMonitorScreen(Screen):
+    BINDINGS = [("q", "app.pop_screen", "Back"), ("escape", "app.pop_screen", "Back")]
+
+    CSS = """
+    #monitor-root { padding: 1 2; }
+    #monitor-title { color: cyan; text-style: bold; }
+    #monitor-signal { height: 3; margin-top: 1; }
+    #monitor-bar { height: 1; }
+    """
+
+    def __init__(self, manager: NetworkManager, network: WifiNetwork) -> None:
+        super().__init__()
+        self.manager = manager
+        self.network = network
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="monitor-root"):
+            yield Static(f"SIGNAL: {self.network.ssid}", id="monitor-title")
+            yield Static("", id="monitor-signal")
+            yield Static("", id="monitor-bar")
+            yield Static("\nUpdates every 2 seconds\nQ Back")
+
+    def on_mount(self) -> None:
+        self.update_signal()
+        self.set_interval(2.0, self.update_signal)
+
+    def update_signal(self) -> None:
+        try:
+            current = self.manager.network_by_bssid(self.network.bssid)
+        except NetworkManagerError as exc:
+            self.query_one("#monitor-signal", Static).update(f"Scan failed: {exc}")
+            return
+        if current is None:
+            self.query_one("#monitor-signal", Static).update("Access point not currently visible")
+            self.query_one("#monitor-bar", Static).update("")
+            return
+        self.network = current
+        blocks = max(0, min(20, round(current.signal / 5)))
+        bar = "#" * blocks + "." * (20 - blocks)
+        self.query_one("#monitor-signal", Static).update(
+            f"Signal: {current.signal}%\nCH {current.channel or '---'}  {current.band}  {current.frequency_mhz or '---'} MHz"
+        )
+        self.query_one("#monitor-bar", Static).update(f"[{bar}]")
+
+
 class NetworkDetailScreen(Screen):
     BINDINGS = [
         ("q", "app.pop_screen", "Back"),
         ("escape", "app.pop_screen", "Back"),
+        ("m", "monitor", "Monitor"),
     ]
 
     CSS = """
@@ -117,9 +163,10 @@ class NetworkDetailScreen(Screen):
     }
     """
 
-    def __init__(self, network: WifiNetwork) -> None:
+    def __init__(self, network: WifiNetwork, manager: NetworkManager) -> None:
         super().__init__()
         self.network = network
+        self.manager = manager
 
     def compose(self) -> ComposeResult:
         network = self.network
@@ -140,8 +187,11 @@ class NetworkDetailScreen(Screen):
                 f"Security: {network.security}\n"
                 f"Current:  "
                 f"{'Yes' if network.in_use else 'No'}\n\n"
-                "Q Back"
+                "M Signal Monitor  Q Back"
             )
+
+    def action_monitor(self) -> None:
+        self.app.push_screen(SignalMonitorScreen(self.manager, self.network))
 
 
 class WifiScanScreen(Screen):
@@ -152,6 +202,7 @@ class WifiScanScreen(Screen):
         ("enter", "connect_selected", "Connect"),
         ("i", "details", "Info"),
         ("f", "forget_selected", "Forget"),
+        ("m", "monitor_selected", "Monitor"),
     ]
 
     CSS = """
@@ -282,7 +333,7 @@ class WifiScanScreen(Screen):
         if self.networks:
             status.update(
                 "Enter Join  I Info  "
-                "F Forget  R Scan  Q Back"
+                "M Sig  F Forget  R Scan  Q Back"
             )
         else:
             status.update(
@@ -316,7 +367,8 @@ class WifiScanScreen(Screen):
         if network is not None:
             self.app.push_screen(
                 NetworkDetailScreen(
-                    network
+                    network,
+                    self.manager,
                 )
             )
 
@@ -364,10 +416,7 @@ class WifiScanScreen(Screen):
             network.security.strip().lower()
             in {"", "open", "--"}
         ):
-            self._connect_with_password(
-                network.ssid,
-                None,
-            )
+            self._connect_open(network.ssid)
             return
 
         self.app.push_screen(
@@ -381,6 +430,22 @@ class WifiScanScreen(Screen):
                 )
             ),
         )
+
+    def _connect_open(self, ssid: str) -> None:
+        status = self.query_one("#scan-status", Static)
+        status.update(f"Connecting to {ssid}...")
+        try:
+            self.manager.connect(ssid)
+        except NetworkManagerError as exc:
+            status.update(f"Connection failed: {exc}")
+            return
+        status.update(f"Connected to {ssid}.")
+        self.refresh_networks()
+
+    def action_monitor_selected(self) -> None:
+        network = self._selected_network()
+        if network is not None:
+            self.app.push_screen(SignalMonitorScreen(self.manager, network))
 
     def _connect_with_password(
         self,
@@ -457,7 +522,7 @@ class AboutScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Static(
             "POCKET WI-FI\n\n"
-            "v0.1\n\n"
+            "v0.2.1\n\n"
             "Wireless scanning, connection management "
             "and diagnostics for PocketTerm.\n\n"
             "Future versions can add passive wireless "
@@ -488,7 +553,7 @@ class PocketWifi(App):
     }
 
     #home-status {
-        height: 2;
+        height: 7;
         margin-bottom: 1;
     }
 
@@ -543,20 +608,26 @@ class PocketWifi(App):
         self._update_status()
 
     def _update_status(self) -> None:
-        ssid = (
-            self.manager.active_ssid()
-        )
+        state = self.manager.device_status()
+        info = self.manager.connection_info()
 
-        state = (
-            self.manager.device_status()
+        signal = (
+            f"{info.signal}%"
+            if info.signal is not None
+            else "---"
         )
 
         self.query_one(
             "#home-status",
             Static,
         ).update(
-            f"Wi-Fi: {state}\n"
-            f"SSID: {ssid or '---'}"
+            f"Wi-Fi:   {state}\n"
+            f"SSID:    {info.ssid or '---'}\n"
+            f"IP:      {info.ip_address}\n"
+            f"Router:  {info.gateway}\n"
+            f"DNS:     {info.dns_text}\n"
+            f"Signal:  {signal}\n"
+            f"Iface:   {info.interface}"
         )
 
     def on_list_view_selected(
