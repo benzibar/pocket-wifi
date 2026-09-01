@@ -49,3 +49,10 @@ pocket-wifi
 - Home status area now expands to show all fields.
 - Band detection falls back to Wi-Fi channel when frequency is absent.
 - Connected network is highlighted bright green/bold and explicitly labelled CONNECTED.
+
+
+## v0.2.7
+
+- Fixed Textual CSS color name for connected-network highlighting.
+- Home screen now reserves enough vertical space for all connection fields.
+- Home menu height reduced so status information is not clipped on the PocketTerm display.

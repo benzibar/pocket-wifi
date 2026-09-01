@@ -238,12 +238,12 @@ class WifiScanScreen(Screen):
     }
 
     #network-list .connected-network {
-        color: bright_green;
+        color: ansi_bright_green;
         text-style: bold;
     }
 
     #network-list .connected-network.-highlight {
-        color: bright_green;
+        color: ansi_bright_green;
         text-style: bold reverse;
     }
 
@@ -555,7 +555,7 @@ class AboutScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Static(
             "POCKET WI-FI\n\n"
-            "v0.2.6\n\n"
+            "v0.2.7\n\n"
             "Wireless scanning, connection management "
             "and diagnostics for PocketTerm.\n\n"
             "Future versions can add passive wireless "
@@ -586,12 +586,12 @@ class PocketWifi(App):
     }
 
     #home-status {
-        height: 7;
+        height: 11;
         margin-bottom: 1;
     }
 
     #home-menu {
-        height: 1fr;
+        height: 4;
         border: round $surface;
     }
     """
