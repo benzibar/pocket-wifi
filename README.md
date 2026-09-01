@@ -2,7 +2,7 @@
 
 PocketTerm Wi-Fi scanning, connection management and diagnostics.
 
-## v0.2.5
+## v0.2.6
 
 - Home screen now shows current SSID, device IP address, router/default gateway, DNS, signal and interface
 - Compact nearby-network list for the PocketTerm display
@@ -42,3 +42,10 @@ pocket-wifi
 
 - Fixed startup crash caused by reading channel, band and security from ConnectionInfo.
 - Home screen now obtains those AP-specific fields from the Wi-Fi scan data.
+
+
+## v0.2.6
+
+- Home status area now expands to show all fields.
+- Band detection falls back to Wi-Fi channel when frequency is absent.
+- Connected network is highlighted bright green/bold and explicitly labelled CONNECTED.

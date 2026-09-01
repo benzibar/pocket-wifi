@@ -237,6 +237,16 @@ class WifiScanScreen(Screen):
         border: round $surface;
     }
 
+    #network-list .connected-network {
+        color: bright_green;
+        text-style: bold;
+    }
+
+    #network-list .connected-network.-highlight {
+        color: bright_green;
+        text-style: bold reverse;
+    }
+
     #scan-status {
         height: 2;
     }
@@ -321,11 +331,18 @@ class WifiScanScreen(Screen):
         network_list.clear()
 
         for network in self.networks:
+            connected_text = (
+                " CONNECTED"
+                if network.in_use
+                else ""
+            )
+
             label_text = (
-                f"{network.ssid[:22]:<22} "
+                f"{network.ssid[:20]:<20} "
                 f"{network.signal:>3}% "
                 f"CH{network.channel or 0:<3} "
                 f"{network.band:<4}"
+                f"{connected_text}"
             )
 
             if network.in_use:
@@ -336,11 +353,14 @@ class WifiScanScreen(Screen):
             else:
                 label = Text(label_text)
 
-            network_list.append(
-                ListItem(
-                    Label(label)
-                )
+            item = ListItem(
+                Label(label)
             )
+
+            if network.in_use:
+                item.add_class("connected-network")
+
+            network_list.append(item)
 
         if self.networks:
             status.update(
@@ -535,7 +555,7 @@ class AboutScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Static(
             "POCKET WI-FI\n\n"
-            "v0.2.5\n\n"
+            "v0.2.6\n\n"
             "Wireless scanning, connection management "
             "and diagnostics for PocketTerm.\n\n"
             "Future versions can add passive wireless "
