@@ -321,19 +321,20 @@ class WifiScanScreen(Screen):
         network_list.clear()
 
         for network in self.networks:
-            connected = (
-                " *"
-                if network.in_use
-                else ""
-            )
-
-            label = (
+            label_text = (
                 f"{network.ssid[:22]:<22} "
                 f"{network.signal:>3}% "
                 f"CH{network.channel or 0:<3} "
                 f"{network.band:<4}"
-                f"{connected}"
             )
+
+            if network.in_use:
+                label = Text(
+                    label_text,
+                    style="bright_green bold",
+                )
+            else:
+                label = Text(label_text)
 
             network_list.append(
                 ListItem(
@@ -524,107 +525,6 @@ class WifiScanScreen(Screen):
         self.refresh_networks()
 
 
-class NetworkInfoScreen(Screen):
-    BINDINGS = [
-        ("q", "app.pop_screen", "Back"),
-        ("escape", "app.pop_screen", "Back"),
-        ("r", "refresh_info", "Refresh"),
-    ]
-
-    CSS = """
-    #network-root {
-        padding: 1 2;
-    }
-
-    #network-title {
-        color: cyan;
-        text-style: bold;
-        margin-bottom: 1;
-    }
-
-    #network-fields {
-        height: auto;
-    }
-
-    #network-hint {
-        margin-top: 1;
-        color: cyan;
-    }
-    """
-
-    def __init__(self, manager: NetworkManager) -> None:
-        super().__init__()
-        self.manager = manager
-
-    def compose(self) -> ComposeResult:
-        with Vertical(id="network-root"):
-            yield Static("NETWORK", id="network-title")
-            yield Static("", id="network-fields")
-            yield Static("R Refresh   Q Back", id="network-hint")
-
-    def on_mount(self) -> None:
-        self.update_info()
-
-    def action_refresh_info(self) -> None:
-        self.update_info()
-
-    def update_info(self) -> None:
-        state = self.manager.device_status()
-        info = self.manager.connection_info()
-
-        signal = (
-            f"{info.signal}%"
-            if info.signal is not None
-            else "---"
-        )
-
-        current_network = None
-        try:
-            current_network = next(
-                (
-                    network
-                    for network in self.manager.scan_access_points()
-                    if network.in_use
-                ),
-                None,
-            )
-        except NetworkManagerError:
-            pass
-
-        channel = (
-            str(current_network.channel)
-            if current_network is not None
-            and current_network.channel is not None
-            else "---"
-        )
-        band = (
-            current_network.band
-            if current_network is not None
-            else "---"
-        )
-        security = (
-            current_network.security
-            if current_network is not None
-            else "---"
-        )
-
-        self.query_one("#network-fields", Static).update(
-            field_text(
-                [
-                    ("State:", state),
-                    ("SSID:", info.ssid or "---"),
-                    ("IP:", info.ip_address),
-                    ("Router:", info.gateway),
-                    ("DNS:", info.dns_text),
-                    ("Signal:", signal),
-                    ("Channel:", channel),
-                    ("Band:", band),
-                    ("Security:", security),
-                    ("Iface:", info.interface),
-                ]
-            )
-        )
-
 
 class AboutScreen(Screen):
     BINDINGS = [
@@ -635,7 +535,7 @@ class AboutScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Static(
             "POCKET WI-FI\n\n"
-            "v0.2.2\n\n"
+            "v0.2.4\n\n"
             "Wireless scanning, connection management "
             "and diagnostics for PocketTerm.\n\n"
             "Future versions can add passive wireless "
@@ -681,7 +581,6 @@ class PocketWifi(App):
     ]
 
     MENU = [
-        "Network",
         "Networks",
         "About",
     ]
@@ -743,6 +642,9 @@ class PocketWifi(App):
                     ("Router:", info.gateway),
                     ("DNS:", info.dns_text),
                     ("Signal:", signal),
+                    ("Channel:", str(info.channel) if info.channel is not None else "---"),
+                    ("Band:", info.band or "---"),
+                    ("Security:", info.security or "---"),
                     ("Iface:", info.interface),
                 ]
             )
@@ -756,17 +658,11 @@ class PocketWifi(App):
 
         if index == 0:
             self.push_screen(
-                NetworkInfoScreen(
-                    self.manager
-                )
-            )
-        elif index == 1:
-            self.push_screen(
                 WifiScanScreen(
                     self.manager
                 )
             )
-        elif index == 2:
+        elif index == 1:
             self.push_screen(
                 AboutScreen()
             )

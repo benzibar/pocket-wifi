@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pocket-wifi"
-version = "0.2.2"
+version = "0.2.4"
 description = "PocketTerm Wi-Fi scanning, connection management and diagnostics"
 requires-python = ">=3.11"
 dependencies = [
